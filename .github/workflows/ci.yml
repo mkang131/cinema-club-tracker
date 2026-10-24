@@ -15,7 +15,6 @@ jobs:
     env:
       APP_ENV: test
       JWT_SECRET: ci-only-secret-never-used-in-the-running-service-123456
-      DATABASE_URL: sqlite:///${{ runner.temp }}/migration-check.db
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -30,6 +29,8 @@ jobs:
       - name: Ruff
         run: python -m ruff check .
       - name: Migrations on a new SQLite database
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/migration-check.db
         run: python -m alembic upgrade head
       - name: Tests
         run: python -m pytest -q
