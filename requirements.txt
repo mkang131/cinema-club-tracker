@@ -1,0 +1,12 @@
+# Runtime dependencies; tested versions are constrained by the shared lock file.
+-c requirements.lock
+
+fastapi
+uvicorn
+pydantic-settings
+sqlalchemy
+alembic
+httpx
+PyJWT
+pwdlib[argon2]
+email-validator

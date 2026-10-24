@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.db import Base, utc_now
-from app.main import create_app
 from app.models import Movie, User
 from app.security import create_access_token, hash_password
+from app_final import create_app
 
 
 class FakeProvider:

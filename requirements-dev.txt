@@ -1,0 +1,6 @@
+# Install the application and tools for tests and linting.
+-r requirements.txt
+
+pytest
+pytest-asyncio
+ruff

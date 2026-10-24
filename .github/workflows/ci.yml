@@ -24,9 +24,12 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: requirements.lock
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements.lock
       - name: Install dependencies
-        run: python -m pip install -r requirements.lock
+        run: python -m pip install -r requirements-dev.txt
       - name: Ruff
         run: python -m ruff check .
       - name: Migrations on a new SQLite database
@@ -34,4 +37,30 @@ jobs:
           DATABASE_URL: sqlite:///${{ runner.temp }}/migration-check.db
         run: python -m alembic upgrade head
       - name: Tests
-        run: python -m pytest -q
+        run: python -m pytest -v
+      - name: Upload project source
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cinema-club-tracker-source
+          if-no-files-found: error
+          retention-days: 7
+          # Only the explicitly listed hidden files are included.
+          include-hidden-files: true
+          path: |
+            app_final.py
+            app/**/*.py
+            migrations/**/*.py
+            migrations/script.py.mako
+            alembic.ini
+            test_app.py
+            conftest.py
+            tests/**/*.py
+            requirements.txt
+            requirements-dev.txt
+            requirements.lock
+            pyproject.toml
+            README.md
+            TECHNICAL_SPECIFICATION.md
+            .env.example
+            .gitignore
+            .github/workflows/ci.yml
