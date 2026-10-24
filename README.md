@@ -8,6 +8,23 @@
 
 Стек: Python 3.12, FastAPI, SQLAlchemy, SQLite, Alembic, HTTPX, Pydantic, JWT и Argon2. Тесты — pytest, линтер — Ruff. Подробные требования: [ТЗ](TECHNICAL_SPECIFICATION.md).
 
+## Структура проекта
+
+Восемь обязательных файлов для сдачи:
+
+```text
+app_final.py                 # Точка входа: экспорт фабрики create_app
+requirements.txt             # Зависимости для запуска
+requirements-dev.txt         # Зависимости для разработки и проверок
+test_app.py                  # Не менее трёх содержательных проверок API
+README.md                    # Установка, запуск, проверка и диагностика
+.gitignore                   # Исключения для секретов и локальных файлов
+.env.example                 # Безопасный пример настроек
+.github/workflows/ci.yml      # Автоматические проверки и артефакт исходников
+```
+
+Для работы также нужны `app/` с реализацией сервиса, `migrations/` и `alembic.ini` со схемой базы, `requirements.lock` с точными версиями, `pyproject.toml` с настройками проверок и общий `conftest.py` с тестовыми фикстурами. Расширенные проверки находятся в `tests/`, требования — в `TECHNICAL_SPECIFICATION.md`. `app_final.py` импортирует фабрику из `app.main`, не создавая приложение при импорте; это точка входа в модульный проект, поэтому копировать один этот файл недостаточно.
+
 ## 1. Установка
 
 Нужны Python 3.12 и Git. Все команды выполняются из папки проекта.
@@ -17,7 +34,7 @@ git clone https://github.com/mkang131/cinema-club-tracker.git
 cd cinema-club-tracker
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.lock
+python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
@@ -26,9 +43,11 @@ Copy-Item .env.example .env
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.lock
+python -m pip install -r requirements.txt
 cp .env.example .env
 ```
+
+Для обычного запуска достаточно `requirements.txt`. Его зависимости ограничены точными версиями из `requirements.lock`. Для разработки и CI установи `requirements-dev.txt`: он включает зависимости приложения, pytest, pytest-asyncio и Ruff.
 
 Для первого запуска сгенерируй собственный `JWT_SECRET`. Эта команда записывает случайный секрет непосредственно в локальный `.env`, не выводя его в терминал:
 
@@ -66,7 +85,7 @@ python -c "from pathlib import Path; import secrets; p=Path('.env'); p.write_tex
 
 ```powershell
 python -m alembic upgrade head
-python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
+python -m uvicorn app_final:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 По умолчанию запускается один рабочий процесс. SQLite сохраняет фильмы, участников и обратную связь после перезапуска. Схему создают миграции, запуск сервера не заменяет их применение.
@@ -187,12 +206,15 @@ docker run -d --name cinema-mailpit -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:802
 
 ## 8. Тесты и CI
 
-После установки зависимостей:
+Установи зависимости разработки и запусти проверки:
 
 ```powershell
+python -m pip install -r requirements-dev.txt
 python -m ruff check .
-python -m pytest -q
+python -m pytest -v
 ```
+
+В корневом `test_app.py` находятся не менее трёх содержательных проверок API; дополнительные сценарии сохранены в `tests/`. Команда `python -m pytest -v` собирает оба набора, общие фикстуры определены в корневом `conftest.py`.
 
 Тесты используют отдельные временные SQLite, подменяют SMTP и кино API, а HTTPX-адаптер проверяют через MockTransport. Настоящий `.env`, API-ключи, интернет и отправка писем для тестовых сценариев не нужны. Проверяются авторизация, приглашения и восстановление, фильмы и фильтры, шесть оценок и агрегаты, анонимные отзывы, кэш и сбои провайдера, ограничения БД и приватность ошибок.
 
@@ -208,9 +230,11 @@ python -m alembic current
 
 Выбери новое имя файла, если `migration-check.db` уже существует. После проверки закрой этот терминал, чтобы тестовые переменные не влияли на рабочий запуск. В Linux аналог: `APP_ENV=test JWT_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')" DATABASE_URL=sqlite:///./data/migration-check.db python -m alembic upgrade head`.
 
-Workflow [CI](https://github.com/mkang131/cinema-club-tracker/actions/workflows/ci.yml) находится в [.github/workflows/ci.yml](.github/workflows/ci.yml). Он проверяет PR в `main` при открытии, повторном открытии и новых коммитах, затем повторно запускается после слияния при `push` в `main`. Отдельный push в рабочую ветку без PR CI не запускает. Проверки: Ubuntu, Python 3.12, установка `requirements.lock`, Ruff, миграции новой SQLite и pytest. Ошибка любого шага делает проверку неуспешной. Рабочие секреты CI не требуются, права workflow — `contents: read`.
+Workflow [CI](https://github.com/mkang131/cinema-club-tracker/actions/workflows/ci.yml) находится в [.github/workflows/ci.yml](.github/workflows/ci.yml). Он проверяет PR в `main` при открытии, повторном открытии и новых коммитах, затем повторно запускается после слияния при `push` в `main`. Отдельный push в рабочую ветку без PR CI не запускает. Проверки: Ubuntu, Python 3.12, установка `requirements-dev.txt`, Ruff, миграции новой SQLite и `python -m pytest -v`. Ошибка любого шага делает проверку неуспешной. Рабочие секреты CI не требуются, права workflow — `contents: read`.
 
 Для диагностики открой **Actions → CI → нужный запуск → checks → неуспешный шаг**. Его журнал содержит команду и причину ошибки. Те же команды выше воспроизводят проверки локально.
+
+После успешных проверок CI публикует артефакт **`cinema-club-tracker-source`** на **7 дней**. Чтобы скачать архив, открой **Actions → нужный запуск → Artifacts → cinema-club-tracker-source**. В архив входят только явно перечисленные исходники, миграции, тесты, конфигурация, README, ТЗ и `.env.example`. Настоящий `.env`, базы, логи и виртуальное окружение не включаются. После распаковки нужно установить зависимости и создать собственный `.env` по инструкции выше.
 
 ## 9. Диагностика и ограничения
 
@@ -247,3 +271,5 @@ git switch -c feature/movie-watchlist
 Перед слиянием дождись успешного `checks`. Если `main` изменилась, обнови рабочую ветку и дождись новой проверки. Ветка `main` защищена: изменения проходят через PR с успешным CI, включая изменения владельца репозитория. Отдельный второй рецензент для слияния не требуется. После слияния CI проверяет итоговую `main` ещё раз.
 
 Полные правила для работы с репозиторием: [AGENTS.md](AGENTS.md). Одна задача — одна ветка и один PR.
+
+История разработки должна показывать законченные изменения с понятными сообщениями. Учебный ориентир — не менее шести осмысленных коммитов по этапам проекта; искусственно дробить одно изменение ради количества не нужно.
