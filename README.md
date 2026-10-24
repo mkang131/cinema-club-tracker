@@ -208,7 +208,7 @@ python -m alembic current
 
 Выбери новое имя файла, если `migration-check.db` уже существует. После проверки закрой этот терминал, чтобы тестовые переменные не влияли на рабочий запуск. В Linux аналог: `APP_ENV=test JWT_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')" DATABASE_URL=sqlite:///./data/migration-check.db python -m alembic upgrade head`.
 
-Workflow [CI](https://github.com/mkang131/cinema-club-tracker/actions/workflows/ci.yml) находится в [.github/workflows/ci.yml](.github/workflows/ci.yml). Он запускается на каждый `push` и на `pull_request` в `main`: Ubuntu, Python 3.12, установка `requirements.lock`, Ruff, миграции новой SQLite и pytest. Ошибка любого шага делает проверку неуспешной. Рабочие секреты CI не требуются, права workflow — `contents: read`.
+Workflow [CI](https://github.com/mkang131/cinema-club-tracker/actions/workflows/ci.yml) находится в [.github/workflows/ci.yml](.github/workflows/ci.yml). Он проверяет PR в `main` при открытии, повторном открытии и новых коммитах, затем повторно запускается после слияния при `push` в `main`. Отдельный push в рабочую ветку без PR CI не запускает. Проверки: Ubuntu, Python 3.12, установка `requirements.lock`, Ruff, миграции новой SQLite и pytest. Ошибка любого шага делает проверку неуспешной. Рабочие секреты CI не требуются, права workflow — `contents: read`.
 
 Для диагностики открой **Actions → CI → нужный запуск → checks → неуспешный шаг**. Его журнал содержит команду и причину ошибки. Те же команды выше воспроизводят проверки локально.
 
@@ -231,3 +231,19 @@ Workflow [CI](https://github.com/mkang131/cinema-club-tracker/actions/workflows/
 | Проверка CI красная | Открой журнал упавшего шага `checks`, затем повтори его команду локально |
 
 Первая версия предназначена для небольшого клуба и одного процесса Uvicorn. Кэш и лимиты находятся в памяти и сбрасываются при перезапуске; несколько workers не разделяют их состояние. Локальные фильтры и сортировки выполняются в Python, что подходит для небольшого каталога. Нет фронтенда, нескольких клубов и персональных рекомендаций. Восстановление отправляется фоновой задачей процесса без постоянной очереди доставки. Для размещения с реальными участниками нужны приватные настройки, HTTPS и резервное копирование SQLite; файлы базы и `.env` не публикуются в Git.
+
+## 10. Работа над новой функцией
+
+Каждая задача выполняется в отдельной ветке от обновлённой `main`:
+
+```powershell
+git switch main
+git pull --ff-only
+git switch -c feature/movie-watchlist
+```
+
+Название описывает задачу: `feature/movie-watchlist`, `fix/rating-count`, `docs/setup-guide` или `chore/update-dependencies`. После изменений проверь код локально, сделай коммит и отправь рабочую ветку в GitHub. Создай Pull Request в `main` с описанием проблемы, изменений и результатов проверки; GitHub предложит [шаблон PR](.github/pull_request_template.md).
+
+Перед слиянием дождись успешного `checks`. Если `main` изменилась, обнови рабочую ветку и дождись новой проверки. Ветка `main` защищена: изменения проходят через PR с успешным CI, включая изменения владельца репозитория. Отдельный второй рецензент для слияния не требуется. После слияния CI проверяет итоговую `main` ещё раз.
+
+Полные правила для работы с репозиторием: [AGENTS.md](AGENTS.md). Одна задача — одна ветка и один PR.
